@@ -1,0 +1,29 @@
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Pydantic ecosystem
+pydantic
+pydantic-core
+pydantic-settings
+
+# Database
+SQLAlchemy
+psycopg2-binary
+alembic
+
+# LangChain ecosystem
+langchain
+langchain-community
+langchain-openai
+langchain-ollama
+langgraph
+
+# Vector DB & AI utils
+faiss-cpu
+pypdf
+tiktoken
+
+# Misc
+python-dotenv
+numpy
