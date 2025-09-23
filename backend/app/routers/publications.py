@@ -1,33 +1,3 @@
-# from __future__ import annotations
-
-# from typing import List
-
-# from fastapi import APIRouter, Depends, HTTPException
-# from sqlalchemy.orm import Session
-
-# from ..db import get_db, engine
-# from ..models import Publication
-# from ..schemas import PublicationCreate, PublicationRead
-
-# router = APIRouter(prefix="/publications", tags=["publications"])
-
-
-# # Ensure tables exist (safe no-op if already created)
-# Publication.metadata.create_all(bind=engine)
-
-
-# @router.post("/", response_model=PublicationRead)
-# def create_publication(payload: PublicationCreate, db: Session = Depends(get_db)):
-#     pub = Publication(title=payload.title, abstract=payload.abstract)
-#     db.add(pub)
-#     db.commit()
-#     db.refresh(pub)
-#     return pub
-
-
-# @router.get("/", response_model=List[PublicationRead])
-# def list_publications(db: Session = Depends(get_db)):
-#     return db.query(Publication).order_by(Publication.id.desc()).all()
 
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
@@ -108,7 +78,7 @@ async def create_publication(
         tags=[t.name for t in pub.tags],
         authors=[a.name for a in pub.authors],
         summary=pub.summary,
-        key_findings=pub.key_findings,
+        key_findings=json.loads(pub.key_findings) if pub.key_findings else [],
         methods=pub.methods,
         conclusions=pub.conclusions,
         metadata_json=pub.metadata_json or {}
@@ -130,7 +100,7 @@ def list_publications(q: str | None = None, year: int | None = None, organism: s
         out.append(schemas.PublicationOut(
             id=p.id, title=p.title, abstract=p.abstract, year=p.year, organism=p.organism,
             environment=p.environment, original_link=p.original_link, tags=[t.name for t in p.tags],
-            authors=[a.name for a in p.authors], summary=p.summary, key_findings=p.key_findings,
+            authors=[a.name for a in p.authors], summary=p.summary, key_findings = json.loads(p.key_findings) if p.key_findings else [],
             methods=p.methods, conclusions=p.conclusions, metadata_json=p.metadata_json or {}
         ))
     return out
@@ -140,13 +110,6 @@ def get_publication(pub_id: int, db: Session = Depends(get_db)):
     p = db.get(models.Publication, pub_id)
     if not p:
         raise HTTPException(404, "Publication not found")
-        # Ensure key_findings is a list
-    key_findings = p.key_findings
-    if isinstance(key_findings, str):
-        # If stored as string set-like: '{"a","b","c"}'
-        key_findings = [s.strip().strip('"') for s in key_findings.strip("{}").split(",")]
-    elif key_findings is None:
-        key_findings = []
 
     return schemas.PublicationOut(
         id=p.id,
@@ -159,8 +122,10 @@ def get_publication(pub_id: int, db: Session = Depends(get_db)):
         tags=[t.name for t in p.tags],
         authors=[a.name for a in p.authors],
         summary=p.summary,
-        key_findings=key_findings,
+        key_findings = json.loads(p.key_findings) if p.key_findings else [],
         methods=p.methods,
         conclusions=p.conclusions,
-        metadata_json=p.metadata_json or {}
+        metadata_json=p.metadata_json or {},
+        actionable_insights=p.actionable_insights,
+        knowledge_graph=p.knowledge_graph,
     )

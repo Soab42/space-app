@@ -46,6 +46,7 @@ from .db import init_db
 from .routers import publications, qa
 from .routers.search import router as search_router
 from .routers.analytics import router as analytics_router
+from .routers.graph import router as graph_router
 
 settings = get_settings()
 
@@ -69,6 +70,7 @@ app.include_router(publications.router)
 app.include_router(qa.router)
 app.include_router(search_router)
 app.include_router(analytics_router)
+app.include_router(graph_router)
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=settings.PORT, reload=True)

@@ -35,9 +35,11 @@ class Publication(Base):
 
     # AI-generated fields
     summary: Mapped[str | None] = mapped_column(Text)
-    key_findings: Mapped[str | None] = mapped_column(Text)
+    key_findings: Mapped[list | None] = mapped_column(JSON, default=[])
     methods: Mapped[str | None] = mapped_column(Text)
     conclusions: Mapped[str | None] = mapped_column(Text)
+    knowledge_graph: Mapped[dict | None] = mapped_column(JSON, default={})
+    actionable_insights: Mapped[list | None] = mapped_column(JSON, default=[])
 
     authors: Mapped[list["Author"]] = relationship(
         "Author", secondary="publication_authors", back_populates="publications"

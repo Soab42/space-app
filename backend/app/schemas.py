@@ -23,7 +23,7 @@
 #         from_attributes = True
 
 from pydantic import BaseModel, Field
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Union
 
 class AuthorIn(BaseModel):
     name: str
@@ -59,6 +59,8 @@ class PublicationOut(BaseModel):
     methods: Optional[str] = None
     conclusions: Optional[str] = None
     metadata_json: dict
+    actionable_insights: Optional[List[str]] = None
+    knowledge_graph: Optional[Union[str, dict]] = None
 
     class Config:
         from_attributes = True

@@ -7,7 +7,49 @@ from sqlalchemy.orm import Session
 from .models import Publication, Author, PublicationAuthor, Tag, PublicationTag
 from .vectorstore import save_faiss_for_publication, upsert_global_documents
 from .config import get_settings
-from .rag_graph import generate_section_summaries
+from .rag_graph import generate_section_summaries, _llm
+from .knowledge_graph import extract_knowledge_graph
+from pydantic import BaseModel, Field
+from typing import List
+from langchain_core.prompts import ChatPromptTemplate
+from langchain.output_parsers import PydanticOutputParser
+
+class InsightsList(BaseModel):
+    insights: List[str]
+
+def extract_actionable_insights(text: str) -> List[str]:
+    """
+    Extracts actionable insights from a given text using an LLM.
+    """
+    llm = _llm()
+    parser = PydanticOutputParser(pydantic_object=InsightsList)
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                "You are an expert at extracting actionable insights, recommendations, and countermeasures for mission planners from scientific papers. "
+                "Extract a list of such insights from the provided text. Focus on concrete actions, not general findings."
+                "Return ONLY valid JSON that conforms exactly to the schema and format instructions."
+            ),
+            (
+                "user",
+                "Text:\n{text}\n\nFORMAT INSTRUCTIONS:\n{format_instructions}"
+            ),
+        ]
+    ).partial(format_instructions=parser.get_format_instructions())
+
+    chain = prompt | llm | parser
+
+    try:
+        # Limit the text size to avoid exceeding token limits
+        truncated_text = text[:12000]
+        extracted = chain.invoke({"text": truncated_text})
+        return extracted.insights
+    except Exception as e:
+        print(f"Error extracting actionable insights: {e}")
+        return []
+
 from concurrent.futures import ThreadPoolExecutor
 
 settings = get_settings()
@@ -90,6 +132,16 @@ def ingest_publication(db: Session, pub: Publication, text: str) -> None:
     pub.key_findings = sections.key_findings
     pub.methods = sections.methods
     pub.conclusions = sections.conclusions
+
+    # AI knowledge graph
+    graph = extract_knowledge_graph(text)
+    pub.knowledge_graph = graph.model_dump()
+
+    # AI actionable insights
+    insights = extract_actionable_insights(text)
+    pub.actionable_insights = insights
+
+
 
     db.add(pub)
     db.commit()
