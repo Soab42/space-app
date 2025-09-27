@@ -38,4 +38,7 @@ class Base(DeclarativeBase):
 
 def init_db():
     from . import models  # register models
+    from .seed import seed_data
+    # Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    # seed_data()

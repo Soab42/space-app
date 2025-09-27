@@ -27,6 +27,8 @@ langchain==0.3.3
 langchain-community==0.3.2
 langchain-core==0.3.63
 langchain-ollama==0.3.3
+langchain-groq==0.1.0
+langchain-google-genai==0.0.4
 langchain-openai==0.2.2
 langchain-text-splitters==0.3.8
 langgraph==0.2.38

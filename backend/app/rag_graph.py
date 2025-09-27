@@ -30,13 +30,40 @@ class QAState(TypedDict):
     answer: str
 
 # ---------- Schema ----------
+class KnowledgeGraph(BaseModel):
+    nodes: List[dict] = Field(..., description="List of nodes in the knowledge graph")
+    edges: List[dict] = Field(..., description="List of edges connecting the nodes")
+
+class ScientificProgress(BaseModel):
+    recent_advances: List[str] = Field(..., description="List of recent advances in the field")
+    key_breakthroughs: List[str] = Field(..., description="Key scientific breakthroughs")
+    impact_on_field: List[str] = Field(..., description="Impact on the scientific field")
+
+class KnowledgeGaps(BaseModel):
+    current_limitations: List[str] = Field(..., description="Current limitations in the research")
+    research_needs: List[str] = Field(..., description="Identified research needs")
+    future_directions: List[str] = Field(..., description="Suggested future research directions")
+
+class Consensus(BaseModel):
+    scientific_consensus: List[str] = Field(..., description="Areas of scientific consensus")
+    areas_of_debate: List[str] = Field(..., description="Areas where there is ongoing debate")
+    community_perspectives: List[str] = Field(..., description="Diverse community perspectives")
+
+class FAQ(BaseModel):
+    question: str = Field(..., description="Frequently asked question")
+    answer: str = Field(..., description="Answer to the question")
+
 class SectionSummaries(BaseModel):
-    overall: str = Field(..., description="3-5 sentence overview of the paper.")
-    key_findings: List[str] = Field(
-        ..., description="Short bullet-style findings, each a concise string."
-    )
-    methods: str = Field(..., description="2-4 sentence description of methods.")
-    conclusions: str = Field(..., description="2-3 sentence conclusions.")
+    abstract_summary: str = Field(..., description="Concise summary of the abstract (not full abstract)")
+    scientist_summary: str = Field(..., description="Summary for scientists (max 70 words)")
+    investor_summary: str = Field(..., description="Summary for investors (max 70 words)")
+    mission_architect_summary: str = Field(..., description="Summary for mission architects (max 70 words)")
+    knowledge_graph: KnowledgeGraph = Field(..., description="Structured knowledge graph with nodes and edges")
+    scientific_progress: Optional[ScientificProgress] = Field(None, description="Scientific progress insights")
+    knowledge_gaps: Optional[KnowledgeGaps] = Field(None, description="Identified knowledge gaps")
+    consensus: Optional[Consensus] = Field(None, description="Scientific consensus and debates")
+    faqs: List[FAQ] = Field(..., description="List of frequently asked questions and answers")
+    tags: List[str] = Field(..., description="List of tags or keywords that summarize the paper and connect related papers using this tags")
 
 
 
@@ -102,7 +129,7 @@ def build_qa_graph():
 #         "conclusions": take(r"CONCLUSIONS")
 #     }
 # ---------- Main function ----------
-def generate_section_summaries(title: str, full_text: str) -> SectionSummaries:
+def generate_section_summaries(title: str, full_text: str, abstract: str) -> SectionSummaries:
     llm = _llm()
     parser = PydanticOutputParser(pydantic_object=SectionSummaries)
 
@@ -112,21 +139,30 @@ def generate_section_summaries(title: str, full_text: str) -> SectionSummaries:
             (
                 "system",
                 "You are a precise assistant for scientific summarization. "
-                "Return ONLY valid JSON that conforms exactly to the schema and format instructions.",
+                "Return ONLY valid JSON that conforms exactly to the schema and format instructions.\n"
+                "For the knowledge graph, identify key entities (people, places, concepts, technologies) "
+                "as nodes and their relationships as edges.\n"
+                "For the FAQ section, generate 3-5 common questions and answers that a reader might have.",
             ),
             (
                 "user",
                 (
-                    "Summarize the following scientific paper into four parts:\n\n"
                     f"Title: {title}\n\n"
-                    "Requirements:\n"
-                    "1) overall: 3-5 sentences\n"
-                    "2) key_findings: list of short bullet strings (no numbering)\n"
-                    "3) methods: 2-4 sentences\n"
-                    "4) conclusions: 2-3 sentences\n"
-                    "Keep it factual and faithful; do not invent details.\n\n"
+                    "Abstract: {abstract}\n\n"
+                    "Please analyze this scientific paper and provide the following structured information:\n\n"
+                    "1. A concise summary of the abstract (not the full abstract)\n"
+                    "2. A summary for scientists (max 70 words)\n"
+                    "3. A summary for investors (max 70 words)\n"
+                    "4. A summary for mission architects (max 70 words)\n"
+                    "5. A knowledge graph with nodes (entities) and edges (relationships)\n"
+                    "6. Scientific progress insights (recent advances, key breakthroughs, impact on field)\n"
+                    "7. Knowledge gaps (current limitations, research needs, future directions)\n"
+                    "8. Consensus and debates (scientific consensus, areas of debate, community perspectives)\n"
+                    "9. 3-5 frequently asked questions with answers\n"
+                    "10. Give a list of tags or keywords that summarize the paper\n\n"
                     "Paper Content (truncated if long):\n"
                     "{content}\n\n"
+                    "IMPORTANT: Return ONLY valid JSON that matches the schema exactly.\n"
                     "FORMAT INSTRUCTIONS:\n{format_instructions}"
                 ),
             ),
@@ -135,7 +171,7 @@ def generate_section_summaries(title: str, full_text: str) -> SectionSummaries:
 
     # Run the chain: prompt -> LLM -> parse
     content = full_text[:120000] if full_text else ""
-    msg = llm.invoke(prompt.format_messages(content=content))
+    msg = llm.invoke(prompt.format_messages(content=content, abstract=abstract))
     try:
         print('output from llm ', msg.content)
         return parser.parse(msg.content)

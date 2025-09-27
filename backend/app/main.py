@@ -1,43 +1,3 @@
-# from __future__ import annotations
-
-# from fastapi import FastAPI
-# from fastapi.middleware.cors import CORSMiddleware
-
-# from .config import get_settings
-# from .db import Base, engine
-# from .routers import publications, qa
-
-# settings = get_settings()
-
-# app = FastAPI(title="NASA BioSci API")
-
-# # CORS
-# origins = [o.strip() for o in settings.CORS_ORIGINS.split(",")]
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=origins,
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-
-
-# # Create DB tables on startup
-# Base.metadata.create_all(bind=engine)
-
-# # Routers
-# app.include_router(publications.router)
-# app.include_router(qa.router)
-
-
-# @app.get("/health")
-# async def health():
-#     return {"status": "ok"}
-
-
-# # For `uvicorn app.main:app --reload`
-# __all__ = ["app"]
-
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,11 +7,15 @@ from .routers import publications, qa
 from .routers.search import router as search_router
 from .routers.analytics import router as analytics_router
 from .routers.graph import router as graph_router
+from .routers import categories
+import logging
 
 settings = get_settings()
 
+logging.basicConfig(level=logging.DEBUG)
+logging.debug("Starting application...")
 
-app = FastAPI(title="NASA Bioscience Dashboard API", version="0.2.0")
+app = FastAPI(title="NASA Bioscience Dashboard API", version="0.2.0", debug=True)
 
 origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
@@ -71,6 +35,7 @@ app.include_router(qa.router)
 app.include_router(search_router)
 app.include_router(analytics_router)
 app.include_router(graph_router)
+app.include_router(categories.router)
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=settings.PORT, reload=True)

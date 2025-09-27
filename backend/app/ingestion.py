@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from typing import List
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.output_parsers import PydanticOutputParser
-
+from fastapi.encoders import jsonable_encoder
 class InsightsList(BaseModel):
     insights: List[str]
 
@@ -121,27 +121,31 @@ def upsert_tags(db: Session, publication_id: int, tags: list[str]):
 
 
 def ingest_publication(db: Session, pub: Publication, text: str) -> None:
-    # -------------------------------
     print(f"Ingesting publication {pub.id}...")
+    
+    # Generate AI sectioned summaries
+    sections = generate_section_summaries(pub.title, text, pub.abstract)
+    print("sections", sections.model_dump())  # debugging
 
-    # AI sectioned summaries
-    sections = generate_section_summaries(pub.title, text)
-    print("sections", sections.model_dump())  # for debugging
+    # Summaries
+    pub.summary_of_abstract = sections.abstract_summary
+    pub.summary_for_scientist = sections.scientist_summary
+    pub.summary_for_investor = sections.investor_summary
+    pub.summary_for_mission_architect = sections.mission_architect_summary
 
-    pub.summary = sections.overall
-    pub.key_findings = sections.key_findings
-    pub.methods = sections.methods
-    pub.conclusions = sections.conclusions
+    # Knowledge graph (JSON-serializable)
+    pub.knowledge_graph = jsonable_encoder(sections.knowledge_graph)
 
-    # AI knowledge graph
-    graph = extract_knowledge_graph(text)
-    pub.knowledge_graph = graph.model_dump()
+    # Actionable insights
+    pub.knowledgeable_insights = jsonable_encoder(sections.scientific_progress)
 
-    # AI actionable insights
-    insights = extract_actionable_insights(text)
-    pub.actionable_insights = insights
+    # Knowledge gaps, consensus, FAQs
+    pub.knowledge_gaps = jsonable_encoder(sections.knowledge_gaps)
+    pub.consensus_disagreement = jsonable_encoder(sections.consensus)
+    pub.faqs = jsonable_encoder(sections.faqs)
 
-
+    # Tags
+    upsert_tags(db, pub.id, sections.tags)
 
     db.add(pub)
     db.commit()
@@ -155,7 +159,7 @@ def ingest_publication(db: Session, pub: Publication, text: str) -> None:
             "publication_id": pub.id,
             "title": pub.title,
             "chunk_id": i+1,
-            "year": pub.year,
+            "year": pub.date_year,
             "organism": pub.organism,
             "environment": pub.environment,
             "type": "publication_chunk"
@@ -171,16 +175,4 @@ def ingest_publication(db: Session, pub: Publication, text: str) -> None:
     # 3️⃣ Update global FAISS
     upsert_global_documents(docs)
     print("Global FAISS updated.")
-
-    # -------------------------------
-    # 4️⃣ Generate AI sectioned summaries (parallelized)
-    def generate_and_save_summaries():
-        sections = generate_section_summaries(pub.title, text)
-        pub.summary = sections.get("overall")
-        pub.key_findings = sections.get("key_findings")
-        pub.methods = sections.get("methods")
-        pub.conclusions = sections.get("conclusions")
-        db.add(pub)
-        db.commit()
-        print(f"AI summaries completed for publication {pub.id}.")
 
