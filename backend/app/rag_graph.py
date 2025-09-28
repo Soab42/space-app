@@ -30,9 +30,19 @@ class QAState(TypedDict):
     answer: str
 
 # ---------- Schema ----------
+class Node(BaseModel):
+    id: str = Field(..., description="Unique identifier for the node")
+    label: str = Field(..., description="Short, human-readable label for the node")
+    tooltip: str = Field(..., description="Concise 1–2 sentence description for hover display")
+
+class Edge(BaseModel):
+    from_node: str = Field(..., alias="from", description="ID of the source node")
+    to: str = Field(..., description="ID of the target node")
+    label: str = Field(..., description="Relationship label between nodes")
+
 class KnowledgeGraph(BaseModel):
-    nodes: List[dict] = Field(..., description="List of nodes in the knowledge graph")
-    edges: List[dict] = Field(..., description="List of edges connecting the nodes")
+    nodes: List[Node] = Field(..., description="List of nodes in the knowledge graph")
+    edges: List[Edge] = Field(..., description="List of edges connecting the nodes")
 
 class ScientificProgress(BaseModel):
     recent_advances: List[str] = Field(..., description="List of recent advances in the field")
@@ -64,7 +74,7 @@ class SectionSummaries(BaseModel):
     consensus: Optional[Consensus] = Field(None, description="Scientific consensus and debates")
     faqs: List[FAQ] = Field(..., description="List of frequently asked questions and answers")
     tags: List[str] = Field(..., description="List of tags or keywords that summarize the paper and connect related papers using this tags")
-
+    
 
 
 def retrieve(state: QAState) -> QAState:
@@ -104,30 +114,6 @@ def build_qa_graph():
     print('graph', g)
     return g.compile()
 
-# Simple LLM call for summaries on ingestion
-# def generate_section_summaries(title: str, full_text: str) -> dict:
-#     llm = _llm()
-#     sys = ("Summarize the following scientific paper into concise sections:\n"
-#            f"Title: {title}\n"
-#            "Write 4 parts:\n"
-#            "1) OVERALL (3-5 sentences),\n"
-#            "2) KEY_FINDINGS (bulleted),\n"
-#            "3) METHODS (2-4 sentences),\n"
-#            "4) CONCLUSIONS (2-3 sentences).\n"
-#            "Keep it factual and faithful; do not invent details.")
-#     msg = llm.invoke([("system", sys), ("user", full_text[:120000])])
-#     # Simple parse (robust enough for MVP)
-#     text = msg.content
-#     def take(label):  # naive split
-#         import re
-#         m = re.search(label+r".*?:\s*(.*?)(?:\n[A-Z_]+\s*:|$)", text, re.S)
-#         return m.group(1).strip() if m else None
-#     return {
-#         "overall": take(r"OVERALL"),
-#         "key_findings": take(r"KEY_FINDINGS"),
-#         "methods": take(r"METHODS"),
-#         "conclusions": take(r"CONCLUSIONS")
-#     }
 # ---------- Main function ----------
 def generate_section_summaries(title: str, full_text: str, abstract: str) -> SectionSummaries:
     llm = _llm()
@@ -140,7 +126,7 @@ def generate_section_summaries(title: str, full_text: str, abstract: str) -> Sec
                 "system",
                 "You are a precise assistant for scientific summarization. "
                 "Return ONLY valid JSON that conforms exactly to the schema and format instructions.\n"
-                "For the knowledge graph, identify key entities (people, places, concepts, technologies) "
+                "For the knowledge graph, identify key entities (people, places, concepts, technologies). Keep the graph clean and simple: 3–6 nodes, 2–5 edges only.\n  Tooltips should be concise and non-technical so they look good when displayed on hover.\n"
                 "as nodes and their relationships as edges.\n"
                 "For the FAQ section, generate 3-5 common questions and answers that a reader might have.",
             ),

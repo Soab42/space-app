@@ -21,6 +21,11 @@ class AuthorOut(BaseModel):
         from_attributes = True
 
 
+class FAQ(BaseModel):
+    question: str
+    answer: str
+
+
 # -------------------------
 # Publication
 # -------------------------
@@ -39,6 +44,31 @@ class PublicationIn(BaseModel):
     subcategory_id: Optional[int] = None
     podcast_audio_path: Optional[str] = None
     others_data: dict[str, Any] = Field(default_factory=dict)
+
+
+class PublicationUpdate(BaseModel):
+    title: Optional[str] = None
+    abstract: Optional[str] = None
+    date_month: Optional[str] = None
+    date_year: Optional[int] = None
+    organism: Optional[str] = None
+    environment: Optional[str] = None
+    original_link: Optional[str] = None
+    authors: Optional[List[AuthorIn]] = None
+    category_id: Optional[int] = None
+    subcategory_id: Optional[int] = None
+    podcast_audio_path: Optional[str] = None
+    others_data: Optional[dict[str, Any]] = None
+    summary_of_abstract: Optional[str] = None
+    summary_for_scientist: Optional[str] = None
+    summary_for_investor: Optional[str] = None
+    summary_for_mission_architect: Optional[str] = None
+    knowledgeable_insights: Optional[dict] = None
+    knowledge_gaps: Optional[dict] = None
+    consensus_disagreement: Optional[dict] = None
+    faqs: Optional[List[FAQ]] = None
+    knowledge_graph: Optional[dict] = None
+    add_more_context: Optional[str] = None
 
 
 class RelatedPublicationOut(BaseModel):
@@ -90,9 +120,6 @@ class SubCategoryOut(BaseModel):
 #     community_perspectives: List[str] = []
 
 
-class FAQ(BaseModel):
-    question: str
-    answer: str
 
 
 # -------------------------

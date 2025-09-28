@@ -53,3 +53,35 @@ def global_similarity_search(query: str, k: int = 10) -> List[Document]:
     if gvs is None:
         return []
     return gvs.similarity_search_with_score(query, k=k)
+
+def add_context_to_publication(publication_id: int, additional_context: str):
+    from .ingestion import chunk_text
+    from .db import SessionLocal
+    from .models import Publication
+
+    db = SessionLocal()
+    publication = db.get(Publication, publication_id)
+    if not publication:
+        raise Exception("Publication not found")
+
+    docs = chunk_text(additional_context)
+    for i, d in enumerate(docs):
+        d.metadata.update({
+            "publication_id": publication.id,
+            "title": publication.title,
+            "chunk_id": i + 1, # This might need adjustment if there are existing chunks
+            "year": publication.date_year,
+            "organism": publication.organism,
+            "environment": publication.environment,
+            "type": "publication_chunk"
+        })
+
+    # Add to per-publication FAISS
+    vs = load_faiss_for_publication(publication.id)
+    vs.add_documents(docs)
+    vs.save_local(_pub_dir(publication.id))
+
+    # Add to global FAISS
+    upsert_global_documents(docs)
+
+    db.close()

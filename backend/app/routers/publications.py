@@ -1,15 +1,21 @@
 
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import cast, Integer
 from typing import List
 import json, os, shutil
 from ..db import SessionLocal
 from .. import models, schemas
 from ..ingestion import ingest_publication, _pdf_to_text, upsert_authors, upsert_tags
 from ..config import get_settings
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/publications", tags=["publications"])
 settings = get_settings()
+
+class PaginatedPublicationOut(BaseModel):
+    total: int
+    publications: List[schemas.PublicationOut]
 
 def get_db():
     db = SessionLocal()
@@ -83,16 +89,16 @@ async def create_publication(
     # Build output
     return schemas.PublicationOut.from_orm(pub)
 
-@router.get("", response_model=List[schemas.PublicationOut])
-def list_publications(q: str | None = None, year_from: int | None = None, year_to: int | None = None, organism: str | None = None, category_id: int | None = None, subcategory_id: int | None = None, start_date: str | None = None, end_date: str | None = None, db: Session = Depends(get_db)):
+@router.get("", response_model=PaginatedPublicationOut)
+def list_publications(q: str | None = None, year_from: int | None = None, year_to: int | None = None, organism: str | None = None, category_id: int | None = None, subcategory_id: int | None = None, start_date: str | None = None, end_date: str | None = None, skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     query = db.query(models.Publication)
     if q:
         like = f"%{q}%"
         query = query.filter(models.Publication.title.ilike(like) | models.Publication.abstract.ilike(like))
     if year_from:
-        query = query.filter(models.Publication.date_year >= year_from)
+        query = query.filter(cast(models.Publication.date_year, Integer) >= year_from)
     if year_to:
-        query = query.filter(models.Publication.date_year <= year_to)
+        query = query.filter(cast(models.Publication.date_year, Integer) <= year_to)
     if organism:
         query = query.filter(models.Publication.organism.ilike(f"%{organism}%"))
     if category_id:
@@ -103,9 +109,11 @@ def list_publications(q: str | None = None, year_from: int | None = None, year_t
         query = query.filter(models.Publication.created_at >= start_date)
     if end_date:
         query = query.filter(models.Publication.created_at <= end_date)
-    pubs = query.order_by(models.Publication.created_at.desc()).limit(200).all()
     
-    return [schemas.PublicationOut.from_orm(p) for p in pubs]
+    total_publications = query.count()
+    pubs = query.order_by(models.Publication.created_at.desc()).offset(skip).limit(limit).all()
+    
+    return {"total": total_publications, "publications": [schemas.PublicationOut.from_orm(p) for p in pubs]}
 
 @router.get("/{pub_id}", response_model=schemas.PublicationOut)
 def get_publication(pub_id: int, db: Session = Depends(get_db)):
@@ -123,4 +131,35 @@ def get_publication(pub_id: int, db: Session = Depends(get_db)):
         pub_out.consensus_disagreement = None
 
     return pub_out
+
+
+@router.put("/{publication_id}", response_model=schemas.PublicationOut)
+def update_publication(
+    publication_id: int,
+    publication_update: schemas.PublicationUpdate,
+    db: Session = Depends(get_db)
+):
+    publication = db.get(models.Publication, publication_id)
+    if not publication:
+        raise HTTPException(status_code=404, detail="Publication not found")
+
+    update_data = publication_update.model_dump(exclude_unset=True)
+
+    if "add_more_context" in update_data and update_data["add_more_context"]:
+        from ..vectorstore import add_context_to_publication
+        add_context_to_publication(publication_id, update_data["add_more_context"])
+        del update_data["add_more_context"] # remove it from the publication update data
+
+    for key, value in update_data.items():
+        if key == "authors":
+            upsert_authors(db, publication_id, value)
+        elif key == "tags":
+            upsert_tags(db, publication_id, value)
+        else:
+            setattr(publication, key, value)
+
+    db.commit()
+    db.refresh(publication)
+
+    return schemas.PublicationOut.from_orm(publication)
 

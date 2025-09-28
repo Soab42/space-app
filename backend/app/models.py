@@ -25,10 +25,7 @@ class Publication(Base):
     knowledgeable_insights: Mapped[dict | None] = mapped_column(JSON, default={})
     knowledge_gaps: Mapped[dict | None] = mapped_column(JSON, default={})
     consensus_disagreement: Mapped[dict | None] = mapped_column(JSON, default={})
-    perspective: Mapped[list | None] = mapped_column(JSON, default=[])
     faqs: Mapped[list | None] = mapped_column(JSON, default=[])
-    key_findings: Mapped[list | None] = mapped_column(JSON, default=[])
-    methods: Mapped[str | None] = mapped_column(Text)
     knowledge_graph: Mapped[dict | None] = mapped_column(JSON, default={})
     authors: Mapped[list["Author"]] = relationship(
         "Author", secondary="publication_authors", back_populates="publications"
