@@ -62,7 +62,7 @@ class Settings:
         # Core
         self.PORT: int = int(os.getenv("PORT", 8000))
         self.DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql+psycopg2://root:1234@localhost:32768/nasa_biosc")
-        self.CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+        self.CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "https://syfuddhin.com")
 
         # Embeddings / LLM
         self.EMBED_PROVIDER: str = os.getenv("EMBED_PROVIDER", "ollama")  # openai | ollama
