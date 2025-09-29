@@ -163,3 +163,34 @@ def update_publication(
 
     return schemas.PublicationOut.from_orm(publication)
 
+
+@router.get("/{pub_id}/related", response_model=List[schemas.PublicationOut])
+def get_related_publications(pub_id: int, db: Session = Depends(get_db)):
+    # Get the original publication to find its tags
+    original_publication = db.get(models.Publication, pub_id)
+    if not original_publication:
+        raise HTTPException(status_code=404, detail="Publication not found")
+
+    # Extract tag IDs from the original publication
+    original_tag_ids = {tag.id for tag in original_publication.tags}
+    if not original_tag_ids:
+        return []
+
+    # Find publications that share at least one tag with the original publication
+    # Use a subquery to get distinct publication IDs first, to avoid distinct on JSON columns
+    subquery = (
+        db.query(models.Publication.id)
+        .join(models.Publication.tags)
+        .filter(models.Tag.id.in_(original_tag_ids))
+        .filter(models.Publication.id != pub_id)
+        .distinct()
+    )
+    related_publications = (
+        db.query(models.Publication)
+        .filter(models.Publication.id.in_(subquery))
+        .limit(5)
+        .all()
+    )
+    
+    return [schemas.PublicationOut.from_orm(p) for p in related_publications]
+
