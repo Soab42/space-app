@@ -55,6 +55,7 @@ from functools import lru_cache
 from dotenv import load_dotenv
 load_dotenv()
 
+print(os.getenv("DATABASE_URL"))
 
 class Settings:
     def __init__(self):

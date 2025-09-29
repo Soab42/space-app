@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  # PostgreSQL database
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: appdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  # FastAPI backend
+  fastapi:
+    build:
+      context: ./backend
+    container_name: fastapi_app_nasa
+    restart: always
+    depends_on:
+      - db
+    env_file: 
+      - ./backend/.env
+    ports:
+      - "8000:8000"
+
+  # Node.js frontend/backend
+  node:
+    image: node:20
+    container_name: node_app
+    restart: always
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    command: sh -c "pnpm install && pnpm dev"
+    depends_on:
+      - db
+
+volumes:
+  pgdata:
+  certbot-etc:
+  certbot-var:

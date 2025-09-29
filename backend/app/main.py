@@ -15,7 +15,7 @@ settings = get_settings()
 logging.basicConfig(level=logging.DEBUG)
 logging.debug("Starting application...")
 
-app = FastAPI(title="NASA Bioscience Dashboard API", version="0.2.0", debug=True)
+app = FastAPI(title="NASA Bioscience Dashboard API", version="0.2.0", debug=True, root_path="/api")
 
 origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
