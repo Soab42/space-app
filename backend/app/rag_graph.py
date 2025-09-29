@@ -9,16 +9,18 @@ from langchain.schema import Document
 from .config import get_settings
 from .vectorstore import load_faiss_for_publication
 from langchain.output_parsers import PydanticOutputParser
-
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 settings = get_settings()
-print('settings', settings)
+
 
 def _llm():
     if settings.LLM_PROVIDER == "openai":
         return ChatOpenAI(model=settings.LLM_MODEL, api_key=settings.OPENAI_API_KEY, temperature=0)
     elif settings.LLM_PROVIDER == "ollama":
         return ChatOllama(model=settings.LLM_MODEL, temperature=0)
+    elif settings.LLM_PROVIDER == "google":
+        return ChatGoogleGenerativeAI(model=settings.LLM_MODEL, temperature=0)
     else:
         raise ValueError("Unsupported LLM_PROVIDER")
 

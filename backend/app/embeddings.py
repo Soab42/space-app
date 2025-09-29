@@ -22,6 +22,7 @@
 
 from langchain_openai import OpenAIEmbeddings
 from langchain_ollama import OllamaEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from app.config import get_settings
 
 _settings = get_settings()
@@ -31,5 +32,7 @@ def get_embeddings():
         return OpenAIEmbeddings(model=_settings.EMBED_MODEL, api_key=_settings.OPENAI_API_KEY)
     elif _settings.EMBED_PROVIDER == "ollama":
         return OllamaEmbeddings(model=_settings.EMBED_MODEL)
+    elif _settings.EMBED_PROVIDER == "google":
+        return GoogleGenerativeAIEmbeddings(model=_settings.EMBED_MODEL)
     else:
         raise ValueError("Unsupported EMBED_PROVIDER")

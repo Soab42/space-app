@@ -58,6 +58,7 @@ def add_context_to_publication(publication_id: int, additional_context: str):
     from .ingestion import chunk_text
     from .db import SessionLocal
     from .models import Publication
+    embeddings = get_embeddings()
 
     db = SessionLocal()
     publication = db.get(Publication, publication_id)
@@ -77,9 +78,14 @@ def add_context_to_publication(publication_id: int, additional_context: str):
         })
 
     # Add to per-publication FAISS
-    vs = load_faiss_for_publication(publication.id)
-    vs.add_documents(docs)
+    try:
+        vs = load_faiss_for_publication(publication.id)
+        vs.add_documents(docs)
+    except Exception as e:
+        vs = FAISS.from_documents(docs, embeddings)
+    
     vs.save_local(_pub_dir(publication.id))
+
 
     # Add to global FAISS
     upsert_global_documents(docs)

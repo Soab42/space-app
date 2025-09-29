@@ -68,7 +68,7 @@ class Settings:
         self.EMBED_MODEL: str = os.getenv("EMBED_MODEL", "nomic-embed-text")
         self.OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
         self.GROQ_API_KEY: str | None = os.getenv("GROQ_API_KEY")
-        self.GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY")
+        self.GOOGLE_API_KEY: str | None = os.getenv("GOOGLE_API_KEY")
 
         self.LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "ollama")      # openai | ollama | groq | gemini
         self.LLM_MODEL: str = os.getenv("LLM_MODEL", "mistral")
